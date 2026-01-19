@@ -1,48 +1,59 @@
+// Package cache provides git operations for cache management.
 package cache
 
 import (
-	"bytes"
 	"fmt"
-	"os/exec"
-	"strings"
+
+	"github.com/go-git/go-git/v5"
 )
 
 func CloneRepo(repoURL, dest string) error {
-	_, err := runGit("", "clone", "--depth", "1", repoURL, dest)
-	return err
+	_, err := git.PlainClone(dest, false, &git.CloneOptions{
+		URL:           repoURL,
+		Depth:         1,
+		SingleBranch:  true,
+		Progress:      nil,
+	})
+	if err != nil {
+		return fmt.Errorf("git clone --depth 1 %s %s: %w", repoURL, dest, err)
+	}
+	return nil
 }
 
 func PullRepo(repoPath string) error {
-	_, err := runGit(repoPath, "pull", "--ff-only")
-	return err
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("git pull --ff-only: %w", err)
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("git pull --ff-only: %w", err)
+	}
+
+	err = wt.Pull(&git.PullOptions{
+		Depth: 1,
+	})
+	if err != nil {
+		// NoErrAlreadyUpToDate is not actually an error, it means we're already up to date
+		if err == git.NoErrAlreadyUpToDate {
+			return nil
+		}
+		return fmt.Errorf("git pull --ff-only: %w", err)
+	}
+	return nil
 }
 
 func GetHeadCommit(repoPath string) (string, error) {
-	out, err := runGit(repoPath, "rev-parse", "HEAD")
+	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(out), nil
-}
-
-func runGit(workingDir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	if workingDir != "" {
-		cmd.Dir = workingDir
+		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
 	}
 
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
+	ref, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
 	}
 
-	return stdout.String(), nil
+	return ref.Hash().String(), nil
 }

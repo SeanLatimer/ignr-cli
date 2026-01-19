@@ -66,6 +66,9 @@ func newGenerateCommand(opts *Options) *cobra.Command {
 
 			selected, interactiveUsed, err := selectTemplates(args, items, presetList, suggested, noInteractive)
 			if err != nil {
+				if errors.Is(err, tui.ErrCancelled) {
+					return nil
+				}
 				return err
 			}
 			if len(selected) == 0 {
@@ -90,7 +93,7 @@ func newGenerateCommand(opts *Options) *cobra.Command {
 				Timestamp:   time.Now(),
 			})
 
-			if err := handleExistingOutput(cmd, target, appendMode, force, interactiveUsed); err != nil {
+			if err := handleExistingOutput(cmd, target, appendMode, force, interactiveUsed, selected); err != nil {
 				if errors.Is(err, tui.ErrCancelled) {
 					return nil
 				}
@@ -129,7 +132,7 @@ func selectTemplates(args []string, items []templates.Template, presetList []pre
 		return selected, false, nil
 	}
 
-	selected, err := tui.ShowInteractiveSelector(items, presetList, suggested)
+	selected, err := tui.ShowInteractiveSelector(items, presetList, nil, suggested)
 	return selected, true, err
 }
 
@@ -146,7 +149,7 @@ func resolveOutputPath(output string) (string, error) {
 	return filepath.Join(".", ".gitignore"), nil
 }
 
-func handleExistingOutput(cmd *cobra.Command, path string, appendMode, force, interactive bool) error {
+func handleExistingOutput(cmd *cobra.Command, path string, appendMode, force, interactive bool, templates []templates.Template) error {
 	if appendMode || force {
 		return nil
 	}
@@ -158,12 +161,14 @@ func handleExistingOutput(cmd *cobra.Command, path string, appendMode, force, in
 		return fmt.Errorf("output file exists: %s (use --force or --append)", path)
 	}
 
-	confirm, err := tui.ConfirmOverwrite(path)
+	confirm, err := tui.ConfirmOverwrite(path, templates)
 	if err != nil {
+		if errors.Is(err, tui.ErrCancelled) {
+			return tui.ErrCancelled
+		}
 		return err
 	}
 	if !confirm {
-		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
 		return tui.ErrCancelled
 	}
 	return nil

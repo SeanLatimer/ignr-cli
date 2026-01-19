@@ -12,6 +12,7 @@ import (
 )
 
 type Preset struct {
+	Key       string   `yaml:"key,omitempty"`
 	Name      string   `yaml:"name"`
 	Templates []string `yaml:"templates"`
 	Created   string   `yaml:"created"`
@@ -40,6 +41,11 @@ func LoadPresets() (PresetStore, error) {
 	if err := yaml.Unmarshal(data, &store); err != nil {
 		return PresetStore{}, fmt.Errorf("parse presets: %w", err)
 	}
+	for i := range store.Presets {
+		if strings.TrimSpace(store.Presets[i].Key) == "" {
+			store.Presets[i].Key = SluggifyName(store.Presets[i].Name)
+		}
+	}
 	return store, nil
 }
 
@@ -65,7 +71,11 @@ func FindPreset(name string) (Preset, bool, error) {
 	if err != nil {
 		return Preset{}, false, err
 	}
+	targetKey := SluggifyName(name)
 	for _, preset := range store.Presets {
+		if strings.EqualFold(preset.Key, name) || strings.EqualFold(preset.Key, targetKey) {
+			return preset, true, nil
+		}
 		if strings.EqualFold(preset.Name, name) {
 			return preset, true, nil
 		}
@@ -78,14 +88,16 @@ func CreatePreset(name string, templates []string) error {
 	if err != nil {
 		return err
 	}
+	key := SluggifyName(name)
 	for _, preset := range store.Presets {
-		if strings.EqualFold(preset.Name, name) {
-			return fmt.Errorf("preset already exists: %s", name)
+		if strings.EqualFold(preset.Key, key) {
+			return fmt.Errorf("preset key already exists: %s", key)
 		}
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	store.Presets = append(store.Presets, Preset{
+		Key:       key,
 		Name:      name,
 		Templates: templates,
 		Created:   now,
@@ -94,20 +106,19 @@ func CreatePreset(name string, templates []string) error {
 	return SavePresets(store)
 }
 
-func UpdatePreset(name string, templates []string) error {
+func EditPreset(name string, templates []string) error {
 	store, err := LoadPresets()
 	if err != nil {
 		return err
 	}
 
-	for i, preset := range store.Presets {
-		if strings.EqualFold(preset.Name, name) {
-			store.Presets[i].Templates = templates
-			store.Presets[i].Updated = time.Now().UTC().Format(time.RFC3339)
-			return SavePresets(store)
-		}
+	index, ok := findPresetIndex(store, name)
+	if !ok {
+		return fmt.Errorf("preset not found: %s", name)
 	}
-	return fmt.Errorf("preset not found: %s", name)
+	store.Presets[index].Templates = templates
+	store.Presets[index].Updated = time.Now().UTC().Format(time.RFC3339)
+	return SavePresets(store)
 }
 
 func DeletePreset(name string) error {
@@ -116,20 +127,12 @@ func DeletePreset(name string) error {
 		return err
 	}
 
-	filtered := make([]Preset, 0, len(store.Presets))
-	found := false
-	for _, preset := range store.Presets {
-		if strings.EqualFold(preset.Name, name) {
-			found = true
-			continue
-		}
-		filtered = append(filtered, preset)
-	}
-	if !found {
+	index, ok := findPresetIndex(store, name)
+	if !ok {
 		return fmt.Errorf("preset not found: %s", name)
 	}
 
-	store.Presets = filtered
+	store.Presets = append(store.Presets[:index], store.Presets[index+1:]...)
 	return SavePresets(store)
 }
 
@@ -139,4 +142,50 @@ func ListPresets() ([]Preset, error) {
 		return nil, err
 	}
 	return store.Presets, nil
+}
+
+func findPresetIndex(store PresetStore, name string) (int, bool) {
+	targetKey := SluggifyName(name)
+	for i, preset := range store.Presets {
+		if strings.EqualFold(preset.Key, name) || strings.EqualFold(preset.Key, targetKey) {
+			return i, true
+		}
+		if strings.EqualFold(preset.Name, name) {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+func SluggifyName(name string) string {
+	name = strings.TrimSpace(strings.ToLower(name))
+	var b strings.Builder
+	lastHyphen := false
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+			lastHyphen = false
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastHyphen = false
+		case r == ' ' || r == '_':
+			if !lastHyphen {
+				b.WriteByte('-')
+				lastHyphen = true
+			}
+		case r == '-':
+			if !lastHyphen {
+				b.WriteByte('-')
+				lastHyphen = true
+			}
+		default:
+			continue
+		}
+	}
+	result := strings.Trim(b.String(), "-")
+	if result == "" {
+		return "preset"
+	}
+	return result
 }

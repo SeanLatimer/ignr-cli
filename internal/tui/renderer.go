@@ -48,12 +48,13 @@ func renderSelectedItems(selected []templates.Template, width int) string {
 	for _, t := range selected {
 		parts = append(parts, displayName(t))
 	}
-	return truncateToWidth("Selected: "+strings.Join(parts, ", "), width)
+	line := "Selected: " + strings.Join(parts, ", ")
+	return truncateToWidth(getStyles().SelectedStyle.Render(line), width)
 }
 
 func renderSearchBox(state RenderState, width int) []string {
 	queryLine := "Search: " + state.Query
-	queryLine = truncateToWidth(queryLine, width)
+	queryLine = truncateToWidth(getStyles().SearchInputStyle.Render(queryLine), width)
 
 	list := renderList(state.Filtered, state.Cursor, state.Selected, state.Suggested, width)
 	footer := renderFooter(width)
@@ -87,12 +88,18 @@ func renderList(items []templates.Template, cursor int, selected map[string]temp
 		}
 
 		line := fmt.Sprintf("%s [%s%s] %s (%s)", cursorMark, selectMark, suggestMark, displayName(item), item.Category)
+		if i == cursor {
+			line = getStyles().SelectedStyle.Render(line)
+		}
+		if suggestMark != " " {
+			line = getStyles().SuggestedStyle.Render(line)
+		}
 		line = truncateToWidth(line, width)
 		lines = append(lines, line)
 	}
 
 	if len(lines) == 0 {
-		lines = append(lines, "(no matches)")
+		lines = append(lines, getStyles().FooterStyle.Render("(no matches)"))
 	}
 
 	return lines
@@ -100,14 +107,14 @@ func renderList(items []templates.Template, cursor int, selected map[string]temp
 
 func displayName(item templates.Template) string {
 	if item.Source == templates.SourceUser {
-		return "(User) " + item.Name
+		return getStyles().UserBadgeStyle.Render("(User)") + " " + item.Name
 	}
 	return item.Name
 }
 
 func renderFooter(width int) string {
 	footer := "Enter/Space toggle • Tab confirm • Esc cancel"
-	return truncateToWidth(footer, width)
+	return truncateToWidth(getStyles().FooterStyle.Render(footer), width)
 }
 
 func truncateToWidth(text string, width int) string {

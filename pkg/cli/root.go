@@ -1,3 +1,4 @@
+// Package cli defines CLI commands for ignr.
 package cli
 
 import (

@@ -89,3 +89,5 @@ Temporary Items
 .apdisk
 
 ref
+# Added by goreleaser init:
+dist/

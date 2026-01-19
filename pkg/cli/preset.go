@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -15,50 +17,121 @@ import (
 )
 
 func newPresetCommand(opts *Options) *cobra.Command {
+	createCmd := newPresetCreateCommand(opts)
+	editCmd := newPresetEditCommand(opts)
+	listCmd := newPresetListCommand(opts)
+	showCmd := newPresetShowCommand(opts)
+	deleteCmd := newPresetDeleteCommand(opts)
+	useCmd := newPresetUseCommand(opts)
+
 	cmd := &cobra.Command{
 		Use:   "preset",
 		Short: "Manage template presets",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := tui.ShowPresetApp()
+			if err != nil {
+				if errors.Is(err, tui.ErrCancelled) {
+					return nil
+				}
+				return err
+			}
+			return nil
+		},
 	}
 
 	cmd.AddCommand(
-		newPresetCreateCommand(opts),
-		newPresetListCommand(opts),
-		newPresetShowCommand(opts),
-		newPresetDeleteCommand(opts),
-		newPresetUseCommand(opts),
+		createCmd,
+		editCmd,
+		listCmd,
+		showCmd,
+		deleteCmd,
+		useCmd,
 	)
 	return cmd
 }
 
 func newPresetCreateCommand(opts *Options) *cobra.Command {
-	return &cobra.Command{
-		Use:   "create <name> <template1> [template2...]",
+	var noInteractive bool
+	cmd := &cobra.Command{
+		Use:   "create [name] [template1 template2...]",
 		Short: "Create a preset from template names",
-		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			templateNames := args[1:]
+			var name string
+			templateNames := []string{}
+			if len(args) > 0 {
+				name = args[0]
+				if len(args) > 1 {
+					templateNames = args[1:]
+				}
+			}
 
 			items, err := discoverAllTemplates()
 			if err != nil {
 				return err
 			}
 
-			index := templates.BuildIndex(items)
-			for _, tmpl := range templateNames {
-				if _, ok := templates.FindTemplate(index, tmpl); !ok {
-					return fmt.Errorf("template not found: %s", tmpl)
+			if len(templateNames) > 0 || noInteractive {
+				if strings.TrimSpace(name) == "" {
+					return fmt.Errorf("preset name is required in non-interactive mode")
 				}
+				index := templates.BuildIndex(items)
+				for _, tmpl := range templateNames {
+					if _, ok := templates.FindTemplate(index, tmpl); !ok {
+						return fmt.Errorf("template not found: %s", tmpl)
+					}
+				}
+				if err := presets.CreatePreset(name, templateNames); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Created preset %s with %d templates\n", name, len(templateNames))
+				return nil
+			}
+
+			existingKeys, err := presetKeys()
+			if err != nil {
+				return err
+			}
+
+			if strings.TrimSpace(name) == "" {
+				name, err = tui.ShowPresetNameInput("Preset name:", existingKeys, false)
+				if err != nil {
+					if errors.Is(err, tui.ErrCancelled) {
+						return nil
+					}
+					return err
+				}
+			} else {
+				key := presets.SluggifyName(name)
+				if presetKeyExists(existingKeys, key) {
+					return fmt.Errorf("preset key already exists: %s", key)
+				}
+			}
+
+			selected, err := tui.ShowInteractiveSelector(items, nil, nil, nil)
+			if err != nil {
+				if errors.Is(err, tui.ErrCancelled) {
+					return nil
+				}
+				return err
+			}
+			if len(selected) == 0 {
+				return fmt.Errorf("no templates selected")
+			}
+
+			templateNames = make([]string, 0, len(selected))
+			for _, tmpl := range selected {
+				templateNames = append(templateNames, tmpl.Name)
 			}
 
 			if err := presets.CreatePreset(name, templateNames); err != nil {
 				return err
 			}
-
 			fmt.Fprintf(cmd.OutOrStdout(), "Created preset %s with %d templates\n", name, len(templateNames))
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&noInteractive, "no-interactive", false, "Disable interactive selection")
+	return cmd
 }
 
 func newPresetListCommand(opts *Options) *cobra.Command {
@@ -75,11 +148,110 @@ func newPresetListCommand(opts *Options) *cobra.Command {
 				return nil
 			}
 			for _, preset := range list {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s (%d templates)\n", preset.Name, len(preset.Templates))
+				key := preset.Key
+				if strings.TrimSpace(key) == "" {
+					key = presets.SluggifyName(preset.Name)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "%s [%s] (%d templates)\n", preset.Name, key, len(preset.Templates))
 			}
 			return nil
 		},
 	}
+}
+
+func newPresetEditCommand(opts *Options) *cobra.Command {
+	var noInteractive bool
+	cmd := &cobra.Command{
+		Use:   "edit [key] [template1 template2...]",
+		Short: "Edit a preset",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var name string
+			templateNames := []string{}
+			if len(args) > 0 {
+				name = args[0]
+				if len(args) > 1 {
+					templateNames = args[1:]
+				}
+			}
+
+			items, err := discoverAllTemplates()
+			if err != nil {
+				return err
+			}
+
+			if len(templateNames) > 0 || noInteractive {
+				if strings.TrimSpace(name) == "" {
+					return fmt.Errorf("preset key or name is required in non-interactive mode")
+				}
+				index := templates.BuildIndex(items)
+				for _, tmpl := range templateNames {
+					if _, ok := templates.FindTemplate(index, tmpl); !ok {
+						return fmt.Errorf("template not found: %s", tmpl)
+					}
+				}
+				if err := presets.EditPreset(name, templateNames); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Updated preset %s with %d templates\n", name, len(templateNames))
+				return nil
+			}
+
+			var preset presets.Preset
+			if strings.TrimSpace(name) == "" {
+				list, err := presets.ListPresets()
+				if err != nil {
+					return err
+				}
+				if len(list) == 0 {
+					return fmt.Errorf("no presets found")
+				}
+				preset, err = tui.ShowPresetSelector(list)
+				if err != nil {
+					if errors.Is(err, tui.ErrCancelled) {
+						return nil
+					}
+					return err
+				}
+			} else {
+				found, ok, err := presets.FindPreset(name)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("preset not found: %s", name)
+				}
+				preset = found
+			}
+
+			selected, err := tui.ShowInteractiveSelector(items, nil, preset.Templates, nil)
+			if err != nil {
+				if errors.Is(err, tui.ErrCancelled) {
+					return nil
+				}
+				return err
+			}
+			if len(selected) == 0 {
+				return fmt.Errorf("no templates selected")
+			}
+
+			templateNames = make([]string, 0, len(selected))
+			for _, tmpl := range selected {
+				templateNames = append(templateNames, tmpl.Name)
+			}
+
+			presetKey := preset.Key
+			if strings.TrimSpace(presetKey) == "" {
+				presetKey = preset.Name
+			}
+			if err := presets.EditPreset(presetKey, templateNames); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Updated preset %s with %d templates\n", preset.Name, len(templateNames))
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&noInteractive, "no-interactive", false, "Disable interactive selection")
+	return cmd
 }
 
 func newPresetShowCommand(opts *Options) *cobra.Command {
@@ -96,6 +268,9 @@ func newPresetShowCommand(opts *Options) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("preset not found: %s", name)
 			}
+			if strings.TrimSpace(preset.Key) != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "Key: %s\n", preset.Key)
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", preset.Name)
 			fmt.Fprintf(cmd.OutOrStdout(), "Templates: %s\n", strings.Join(preset.Templates, ", "))
 			if preset.Created != "" {
@@ -111,15 +286,53 @@ func newPresetShowCommand(opts *Options) *cobra.Command {
 
 func newPresetDeleteCommand(opts *Options) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <name>",
+		Use:   "delete [key]",
 		Short: "Delete a preset",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			if err := presets.DeletePreset(name); err != nil {
+			var preset presets.Preset
+			if len(args) == 0 {
+				list, err := presets.ListPresets()
+				if err != nil {
+					return err
+				}
+				if len(list) == 0 {
+					return fmt.Errorf("no presets found")
+				}
+				preset, err = tui.ShowPresetSelector(list)
+				if err != nil {
+					if errors.Is(err, tui.ErrCancelled) {
+						return nil
+					}
+					return err
+				}
+			} else {
+				found, ok, err := presets.FindPreset(args[0])
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("preset not found: %s", args[0])
+				}
+				preset = found
+			}
+
+			confirm, err := confirmPrompt(cmd, fmt.Sprintf("Delete preset %s?", preset.Name))
+			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Deleted preset %s\n", name)
+			if !confirm {
+				fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+				return nil
+			}
+
+			key := preset.Key
+			if strings.TrimSpace(key) == "" {
+				key = preset.Name
+			}
+			if err := presets.DeletePreset(key); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Deleted preset %s\n", preset.Name)
 			return nil
 		},
 	}
@@ -132,17 +345,33 @@ func newPresetUseCommand(opts *Options) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "use <name>",
+		Use:   "use [key]",
 		Short: "Generate a .gitignore using a preset",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			preset, ok, err := presets.FindPreset(name)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return fmt.Errorf("preset not found: %s", name)
+			var preset presets.Preset
+			interactiveUsed := false
+			if len(args) == 0 {
+				list, err := presets.ListPresets()
+				if err != nil {
+					return err
+				}
+				if len(list) == 0 {
+					return fmt.Errorf("no presets found")
+				}
+				preset, err = tui.ShowPresetSelector(list)
+				if err != nil {
+					return err
+				}
+				interactiveUsed = true // Preset selector is interactive
+			} else {
+				found, ok, err := presets.FindPreset(args[0])
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("preset not found: %s", args[0])
+				}
+				preset = found
 			}
 
 			items, err := discoverAllTemplates()
@@ -176,7 +405,7 @@ func newPresetUseCommand(opts *Options) *cobra.Command {
 				Timestamp:   time.Now(),
 			})
 
-			if err := handleExistingOutput(cmd, target, appendMode, force, false); err != nil {
+			if err := handleExistingOutput(cmd, target, appendMode, force, interactiveUsed, selected); err != nil {
 				if errors.Is(err, tui.ErrCancelled) {
 					return nil
 				}
@@ -220,4 +449,41 @@ func discoverAllTemplates() ([]templates.Template, error) {
 	}
 
 	return append(items, userItems...), nil
+}
+
+func presetKeys() ([]string, error) {
+	list, err := presets.ListPresets()
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(list))
+	for _, preset := range list {
+		if strings.TrimSpace(preset.Key) == "" {
+			keys = append(keys, presets.SluggifyName(preset.Name))
+			continue
+		}
+		keys = append(keys, preset.Key)
+	}
+	return keys, nil
+}
+
+func presetKeyExists(keys []string, key string) bool {
+	key = strings.ToLower(strings.TrimSpace(key))
+	for _, existing := range keys {
+		if strings.ToLower(existing) == key {
+			return true
+		}
+	}
+	return false
+}
+
+func confirmPrompt(cmd *cobra.Command, prompt string) (bool, error) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s [y/N]: ", prompt)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return false, err
+	}
+	response := strings.ToLower(strings.TrimSpace(line))
+	return response == "y" || response == "yes", nil
 }

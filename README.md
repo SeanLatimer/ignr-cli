@@ -17,17 +17,52 @@ Offline-first gitignore generator CLI tool.
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew install seanlatimer/tap/ignr
+```
+
+### Scoop (Windows)
+
+```bash
+scoop bucket add ignr https://github.com/seanlatimer/scoop-bucket
+scoop install ignr
+```
+
+### Install Script
+
+**Unix/Linux/macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/seanlatimer/ignr-cli/main/scripts/install.sh | sh
+```
+
+**Windows PowerShell:**
+```powershell
+irm https://raw.githubusercontent.com/seanlatimer/ignr-cli/main/scripts/install.ps1 | iex
+```
+
+**Windows CMD:**
+```cmd
+install.bat
+```
+
+To install a specific version, set the `VERSION` environment variable:
+```bash
+VERSION=v1.0.0 curl -fsSL https://raw.githubusercontent.com/seanlatimer/ignr-cli/main/scripts/install.sh | sh
+```
+
 ### From Source
 
 ```bash
-git clone <repository-url>
-cd ignr
+git clone https://github.com/seanlatimer/ignr-cli.git
+cd ignr-cli
 go install ./cmd/ignr
 ```
 
-### Binary Releases
+### Manual Installation
 
-Check the [releases page](https://github.com/yourusername/ignr/releases) for pre-built binaries.
+Download pre-built binaries from the [releases page](https://github.com/seanlatimer/ignr-cli/releases).
 
 ## Usage
 

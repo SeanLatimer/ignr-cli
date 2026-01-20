@@ -3,21 +3,32 @@
 
 version: 2
 
+project_name: ignr-cli
+
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - env:
+  - id: ignr
+    main: ./cmd/ignr
+    binary: ignr
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
       - windows
       - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X go.seanlatimer.dev/ignr/pkg/cli.Version={{.Version}}
 
 archives:
-  - formats: [tar.gz]
-    # Archive naming matches uname output format (e.g., ignr_Linux_x86_64)
+  - id: default
+    formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -25,10 +36,12 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # Use zip format for Windows archives
     format_overrides:
       - goos: windows
         formats: [zip]
+
+checksum:
+  name_template: "checksums.txt"
 
 changelog:
   sort: asc
@@ -38,8 +51,37 @@ changelog:
       - "^test:"
 
 release:
+  github:
+    owner: seanlatimer
+    name: ignr-cli
   footer: >-
 
     ---
 
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+
+homebrew_casks:
+  - name: ignr
+    repository:
+      owner: seanlatimer
+      name: homebrew-tap
+    description: "Offline-first gitignore generator"
+    homepage: "https://github.com/seanlatimer/ignr-cli"
+    license: "MIT"
+    binaries:
+      - ignr
+    commit_author:
+      name: goreleaser
+      email: goreleaser@users.noreply.github.com
+
+scoops:
+  - name: ignr
+    repository:
+      owner: seanlatimer
+      name: scoop-bucket
+    description: "Offline-first gitignore generator"
+    homepage: "https://github.com/seanlatimer/ignr-cli"
+    license: "MIT"
+    commit_author:
+      name: goreleaser
+      email: goreleaser@users.noreply.github.com

@@ -17,24 +17,24 @@ import (
 func setupCacheTest(t *testing.T) func() {
 	t.Helper()
 	tmpDir := t.TempDir()
-	
+
 	// Save original values
 	originalXDGConfig := os.Getenv("XDG_CONFIG_HOME")
 	originalConfigHome := xdg.ConfigHome
-	
+
 	// Set XDG_CONFIG_HOME environment variable
 	if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
 		t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
 	}
-	
+
 	// Directly override xdg.ConfigHome since xdg reads env vars at init time
 	xdg.ConfigHome = tmpDir
-	
+
 	// Return cleanup function
 	return func() {
 		// Restore xdg.ConfigHome
 		xdg.ConfigHome = originalConfigHome
-		
+
 		// Restore environment variable
 		if originalXDGConfig != "" {
 			if err := os.Setenv("XDG_CONFIG_HOME", originalXDGConfig); err != nil {
@@ -74,10 +74,10 @@ func TestIsCacheInitialized(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name          string
-		setup         func() string
-		want          bool
-		wantErr       bool
+		name    string
+		setup   func() string
+		want    bool
+		wantErr bool
 	}{
 		{
 			name: "non-initialized cache",
@@ -237,10 +237,10 @@ func TestGetStatus(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name          string
-		setup         func()
+		name            string
+		setup           func()
 		wantInitialized bool
-		wantErr       bool
+		wantErr         bool
 	}{
 		{
 			name: "non-initialized cache",

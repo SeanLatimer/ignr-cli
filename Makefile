@@ -1,5 +1,8 @@
 .PHONY: test test-unit test-integration test-coverage test-all
 
+ALL_PACKAGES := $(shell go list ./...)
+TEST_PACKAGES := $(filter-out %/dist %dist/%,$(ALL_PACKAGES))
+
 # Run all tests (excluding integration tests)
 test:
 	go test ./... -short
@@ -37,6 +40,11 @@ test-pkg:
 # Run tests with race detection
 test-race:
 	go test ./... -short -race
+
+# Run tests for CI (with race detection and coverage)
+test-ci:
+	mkdir -p dist
+	go test -v -race -coverprofile=dist/coverage.out -covermode=atomic $(TEST_PACKAGES)
 
 # Clean coverage files
 clean:

@@ -3,12 +3,22 @@
 package tui
 
 import (
+	"os"
 	"testing"
 
 	"go.seanlatimer.dev/ignr/internal/templates"
 )
 
+func isCI() bool {
+	return os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != ""
+}
+
 func TestShowInteractiveSelectorEmpty(t *testing.T) {
+	// Skip in CI environments where TUI tests hang
+	if isCI() {
+		t.Skip("Skipping TUI test in CI environment")
+	}
+	
 	// Test with empty template list
 	selected, err := ShowInteractiveSelector([]templates.Template{}, nil, nil, nil)
 	
@@ -23,6 +33,11 @@ func TestShowInteractiveSelectorEmpty(t *testing.T) {
 }
 
 func TestShowInteractiveSelectorBasic(t *testing.T) {
+	// Skip in CI environments where TUI tests hang
+	if isCI() {
+		t.Skip("Skipping TUI test in CI environment")
+	}
+	
 	// Create test templates
 	testTemplates := []templates.Template{
 		{Name: "Go", Path: "/go.gitignore", Category: templates.CategoryRoot},

@@ -4,12 +4,11 @@ package presets
 
 import (
 	"os"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
+	"go.seanlatimer.dev/ignr/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -183,7 +182,7 @@ func TestPresetYAMLFormatIntegration(t *testing.T) {
 	}
 	
 	// Read the YAML file directly
-	path, err := GetPresetsPath()
+	path, err := config.GetPresetsPath()
 	if err != nil {
 		t.Fatalf("GetPresetsPath() error = %v", err)
 	}
@@ -313,7 +312,7 @@ func TestPresetInvalidYAMLIntegration(t *testing.T) {
 	defer cleanup()
 	
 	// Create invalid YAML file
-	path, err := GetPresetsPath()
+	path, err := config.GetPresetsPath()
 	if err != nil {
 		t.Fatalf("GetPresetsPath() error = %v", err)
 	}

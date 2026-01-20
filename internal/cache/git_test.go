@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 func TestCloneRepo(t *testing.T) {
@@ -157,7 +159,13 @@ func TestPullRepoSuccess(t *testing.T) {
 		t.Fatalf("failed to add file: %v", err)
 	}
 	
-	if _, err := wt.Commit("Initial commit", &git.CommitOptions{}); err != nil {
+	if _, err := wt.Commit("Initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	}); err != nil {
 		t.Fatalf("failed to commit: %v", err)
 	}
 	
@@ -253,7 +261,13 @@ func TestGetHeadCommitSuccess(t *testing.T) {
 		t.Fatalf("failed to add file: %v", err)
 	}
 	
-	commit, err := wt.Commit("Initial commit", &git.CommitOptions{})
+	commit, err := wt.Commit("Initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
 	if err != nil {
 		t.Fatalf("failed to commit: %v", err)
 	}
@@ -301,7 +315,13 @@ func TestPullRepoAlreadyUpToDate(t *testing.T) {
 		t.Fatalf("failed to add file: %v", err)
 	}
 	
-	if _, err := wt.Commit("Initial commit", &git.CommitOptions{}); err != nil {
+	if _, err := wt.Commit("Initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	}); err != nil {
 		t.Fatalf("failed to commit: %v", err)
 	}
 	

@@ -6,8 +6,10 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // setupCacheTest sets up a temporary config directory for testing cache
@@ -281,7 +283,13 @@ func TestGetStatus(t *testing.T) {
 					t.Fatalf("failed to add file: %v", err)
 				}
 				
-				if _, err := wt.Commit("Initial commit", &git.CommitOptions{}); err != nil {
+				if _, err := wt.Commit("Initial commit", &git.CommitOptions{
+					Author: &object.Signature{
+						Name:  "Test User",
+						Email: "test@example.com",
+						When:  time.Now(),
+					},
+				}); err != nil {
 					t.Fatalf("failed to commit: %v", err)
 				}
 			},

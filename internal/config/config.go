@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/adrg/xdg"
+	_ "go.seanlatimer.dev/ignr/internal/xdginit"
 )
 
 const (
@@ -20,11 +23,7 @@ type Config struct {
 }
 
 func GetConfigDir() (string, error) {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("get user config dir: %w", err)
-	}
-	return filepath.Join(base, configDirName), nil
+	return filepath.Join(xdg.ConfigHome, configDirName), nil
 }
 
 func GetConfigPath() (string, error) {

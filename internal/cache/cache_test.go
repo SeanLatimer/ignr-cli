@@ -3,11 +3,11 @@ package cache
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/adrg/xdg"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -18,23 +18,24 @@ func setupCacheTest(t *testing.T) func() {
 	t.Helper()
 	tmpDir := t.TempDir()
 	
-	// Save original environment variables
+	// Save original values
 	originalXDGConfig := os.Getenv("XDG_CONFIG_HOME")
-	originalAppData := os.Getenv("APPDATA")
+	originalConfigHome := xdg.ConfigHome
 	
-	// Set environment variables based on OS
-	if runtime.GOOS == "windows" {
-		if err := os.Setenv("APPDATA", tmpDir); err != nil {
-			t.Fatalf("failed to set APPDATA: %v", err)
-		}
-	} else {
-		if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
-			t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
-		}
+	// Set XDG_CONFIG_HOME environment variable
+	if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
+		t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
 	}
+	
+	// Directly override xdg.ConfigHome since xdg reads env vars at init time
+	xdg.ConfigHome = tmpDir
 	
 	// Return cleanup function
 	return func() {
+		// Restore xdg.ConfigHome
+		xdg.ConfigHome = originalConfigHome
+		
+		// Restore environment variable
 		if originalXDGConfig != "" {
 			if err := os.Setenv("XDG_CONFIG_HOME", originalXDGConfig); err != nil {
 				t.Logf("failed to restore XDG_CONFIG_HOME: %v", err)
@@ -44,27 +45,18 @@ func setupCacheTest(t *testing.T) func() {
 				t.Logf("failed to unset XDG_CONFIG_HOME: %v", err)
 			}
 		}
-		if originalAppData != "" {
-			if err := os.Setenv("APPDATA", originalAppData); err != nil {
-				t.Logf("failed to restore APPDATA: %v", err)
-			}
-		} else {
-			if err := os.Unsetenv("APPDATA"); err != nil {
-				t.Logf("failed to unset APPDATA: %v", err)
-			}
-		}
 	}
 }
 
 func TestGetCachePath(t *testing.T) {
 	cleanup := setupCacheTest(t)
 	defer cleanup()
-	
+
 	path, err := GetCachePath()
 	if err != nil {
 		t.Fatalf("GetCachePath() error = %v", err)
 	}
-	
+
 	// Should contain cache directory components
 	if !strings.Contains(path, defaultConfigDirName) {
 		t.Errorf("GetCachePath() = %q, want path containing %q", path, defaultConfigDirName)
@@ -80,7 +72,7 @@ func TestGetCachePath(t *testing.T) {
 func TestIsCacheInitialized(t *testing.T) {
 	cleanup := setupCacheTest(t)
 	defer cleanup()
-	
+
 	tests := []struct {
 		name          string
 		setup         func() string
@@ -142,18 +134,18 @@ func TestIsCacheInitialized(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup()
-			
+
 			initialized, err := IsCacheInitialized()
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("IsCacheInitialized() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if initialized != tt.want {
 				t.Errorf("IsCacheInitialized() = %v, want %v", initialized, tt.want)
 			}
@@ -164,13 +156,13 @@ func TestIsCacheInitialized(t *testing.T) {
 func TestInitializeCache(t *testing.T) {
 	cleanup := setupCacheTest(t)
 	defer cleanup()
-	
+
 	// This test requires actual git operations, so we'll test that it tries to clone
 	// In a real test environment, you might want to use a mock or local git repo
-	
+
 	// Test with non-existent cache
 	path, err := InitializeCache()
-	
+
 	// InitializeCache will try to clone, which might fail in test environment
 	// So we just check that it returns an error (expected in test) or succeeds
 	if err != nil {
@@ -185,7 +177,7 @@ func TestInitializeCache(t *testing.T) {
 		if path != wantPath {
 			t.Errorf("InitializeCache() = %q, want %q", path, wantPath)
 		}
-		
+
 		// Verify cache is initialized
 		initialized, err := IsCacheInitialized()
 		if err != nil {
@@ -200,25 +192,25 @@ func TestInitializeCache(t *testing.T) {
 func TestInitializeCacheAlreadyInitialized(t *testing.T) {
 	cleanup := setupCacheTest(t)
 	defer cleanup()
-	
+
 	// Create an already initialized cache
 	path, _ := GetCachePath()
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatalf("failed to create cache dir: %v", err)
 	}
-	
+
 	// Create .git directory to mark as initialized
 	gitDir := filepath.Join(path, ".git")
 	if err := os.MkdirAll(gitDir, 0o755); err != nil {
 		t.Fatalf("failed to create .git dir: %v", err)
 	}
-	
+
 	// InitializeCache should return existing path without cloning
 	resultPath, err := InitializeCache()
 	if err != nil {
 		t.Fatalf("InitializeCache() error = %v", err)
 	}
-	
+
 	if resultPath != path {
 		t.Errorf("InitializeCache() = %q, want %q", resultPath, path)
 	}
@@ -227,14 +219,14 @@ func TestInitializeCacheAlreadyInitialized(t *testing.T) {
 func TestUpdateCache(t *testing.T) {
 	cleanup := setupCacheTest(t)
 	defer cleanup()
-	
+
 	// Test with non-initialized cache
 	_, err := UpdateCache()
 	if err == nil {
 		t.Error("UpdateCache() expected error for non-initialized cache, got nil")
 		return
 	}
-	
+
 	if !strings.Contains(err.Error(), "not initialized") {
 		t.Errorf("UpdateCache() error = %v, want error containing 'not initialized'", err)
 	}
@@ -243,7 +235,7 @@ func TestUpdateCache(t *testing.T) {
 func TestGetStatus(t *testing.T) {
 	cleanup := setupCacheTest(t)
 	defer cleanup()
-	
+
 	tests := []struct {
 		name          string
 		setup         func()
@@ -267,22 +259,22 @@ func TestGetStatus(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to init git repo: %v", err)
 				}
-				
+
 				// Create a test file and commit to make HEAD valid
 				testFile := filepath.Join(path, "test.gitignore")
 				if err := os.WriteFile(testFile, []byte("# test"), 0o644); err != nil {
 					t.Fatalf("failed to write test file: %v", err)
 				}
-				
+
 				wt, err := repo.Worktree()
 				if err != nil {
 					t.Fatalf("failed to get worktree: %v", err)
 				}
-				
+
 				if _, err := wt.Add("test.gitignore"); err != nil {
 					t.Fatalf("failed to add file: %v", err)
 				}
-				
+
 				if _, err := wt.Commit("Initial commit", &git.CommitOptions{
 					Author: &object.Signature{
 						Name:  "Test User",
@@ -297,27 +289,27 @@ func TestGetStatus(t *testing.T) {
 			wantErr:         false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup()
-			
+
 			status, err := GetStatus()
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetStatus() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if status.Initialized != tt.wantInitialized {
 				t.Errorf("GetStatus() Initialized = %v, want %v", status.Initialized, tt.wantInitialized)
 			}
-			
+
 			// Verify Path is set
 			if status.Path == "" {
 				t.Error("GetStatus() Path is empty")
 			}
-			
+
 			// If initialized, HeadCommit might be empty (if git operations fail)
 			// or might contain a commit hash
 		})

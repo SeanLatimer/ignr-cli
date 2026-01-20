@@ -2,10 +2,11 @@ package presets
 
 import (
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/adrg/xdg"
 )
 
 // setupPresetTest sets up a temporary config directory for testing presets
@@ -14,23 +15,24 @@ func setupPresetTest(t *testing.T) func() {
 	t.Helper()
 	tmpDir := t.TempDir()
 	
-	// Save original environment variables
+	// Save original values
 	originalXDGConfig := os.Getenv("XDG_CONFIG_HOME")
-	originalAppData := os.Getenv("APPDATA")
+	originalConfigHome := xdg.ConfigHome
 	
-	// Set environment variables based on OS
-	if runtime.GOOS == "windows" {
-		if err := os.Setenv("APPDATA", tmpDir); err != nil {
-			t.Fatalf("failed to set APPDATA: %v", err)
-		}
-	} else {
-		if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
-			t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
-		}
+	// Set XDG_CONFIG_HOME environment variable
+	if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
+		t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
 	}
+	
+	// Directly override xdg.ConfigHome since xdg reads env vars at init time
+	xdg.ConfigHome = tmpDir
 	
 	// Return cleanup function
 	return func() {
+		// Restore xdg.ConfigHome
+		xdg.ConfigHome = originalConfigHome
+		
+		// Restore environment variable
 		if originalXDGConfig != "" {
 			if err := os.Setenv("XDG_CONFIG_HOME", originalXDGConfig); err != nil {
 				t.Logf("failed to restore XDG_CONFIG_HOME: %v", err)
@@ -38,15 +40,6 @@ func setupPresetTest(t *testing.T) func() {
 		} else {
 			if err := os.Unsetenv("XDG_CONFIG_HOME"); err != nil {
 				t.Logf("failed to unset XDG_CONFIG_HOME: %v", err)
-			}
-		}
-		if originalAppData != "" {
-			if err := os.Setenv("APPDATA", originalAppData); err != nil {
-				t.Logf("failed to restore APPDATA: %v", err)
-			}
-		} else {
-			if err := os.Unsetenv("APPDATA"); err != nil {
-				t.Logf("failed to unset APPDATA: %v", err)
 			}
 		}
 	}

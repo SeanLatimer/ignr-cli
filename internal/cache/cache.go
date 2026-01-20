@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/adrg/xdg"
+	_ "go.seanlatimer.dev/ignr/internal/xdginit"
 )
 
 const (
@@ -21,11 +24,7 @@ type Status struct {
 }
 
 func GetCachePath() (string, error) {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("get user config dir: %w", err)
-	}
-	return filepath.Join(base, defaultConfigDirName, defaultCacheDirName, defaultRepoDirName), nil
+	return filepath.Join(xdg.ConfigHome, defaultConfigDirName, defaultCacheDirName, defaultRepoDirName), nil
 }
 
 func IsCacheInitialized() (bool, error) {

@@ -5,7 +5,6 @@ package tui
 import (
 	"testing"
 
-	"go.seanlatimer.dev/ignr/internal/presets"
 	"go.seanlatimer.dev/ignr/internal/templates"
 )
 

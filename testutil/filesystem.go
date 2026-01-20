@@ -198,7 +198,12 @@ func CreateTestPresets(t *testing.T, dir string, presets []map[string]interface{
 func CleanupTemp(paths ...string) func() {
 	return func() {
 		for _, path := range paths {
-			os.RemoveAll(path)
+			if err := os.RemoveAll(path); err != nil {
+				// Cleanup should be best-effort, so we log but don't fail
+				// Note: t is not available in this context, so we can't use t.Logf
+				// This is acceptable for cleanup functions
+				_ = err
+			}
 		}
 	}
 }

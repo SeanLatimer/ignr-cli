@@ -20,9 +20,13 @@ func setupGenerateTest(t *testing.T) func() {
 	
 	// Set environment variables based on OS
 	if runtime.GOOS == "windows" {
-		os.Setenv("APPDATA", tmpDir)
+		if err := os.Setenv("APPDATA", tmpDir); err != nil {
+			t.Fatalf("failed to set APPDATA: %v", err)
+		}
 	} else {
-		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+		if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
+			t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
+		}
 	}
 	
 	// Create cache structure
@@ -53,14 +57,22 @@ func setupGenerateTest(t *testing.T) func() {
 	
 	cleanup := func() {
 		if originalXDGConfig != "" {
-			os.Setenv("XDG_CONFIG_HOME", originalXDGConfig)
+			if err := os.Setenv("XDG_CONFIG_HOME", originalXDGConfig); err != nil {
+				t.Logf("failed to restore XDG_CONFIG_HOME: %v", err)
+			}
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			if err := os.Unsetenv("XDG_CONFIG_HOME"); err != nil {
+				t.Logf("failed to unset XDG_CONFIG_HOME: %v", err)
+			}
 		}
 		if originalAppData != "" {
-			os.Setenv("APPDATA", originalAppData)
+			if err := os.Setenv("APPDATA", originalAppData); err != nil {
+				t.Logf("failed to restore APPDATA: %v", err)
+			}
 		} else {
-			os.Unsetenv("APPDATA")
+			if err := os.Unsetenv("APPDATA"); err != nil {
+				t.Logf("failed to unset APPDATA: %v", err)
+			}
 		}
 	}
 	
@@ -88,10 +100,17 @@ func TestGenerateCommandNonInteractive(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 	defer func() {
-		os.Chdir(originalWd)
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
 		// Give Windows time to release file handles
 		if runtime.GOOS == "windows" {
 			time.Sleep(100 * time.Millisecond)
@@ -108,7 +127,7 @@ func TestGenerateCommandNonInteractive(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	// Should succeed in non-interactive mode
 	if err != nil {
@@ -135,9 +154,18 @@ func TestGenerateCommandOutputFile(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
+	}()
 	
 	opts := &Options{}
 	cmd := newGenerateCommand(opts)
@@ -150,7 +178,7 @@ func TestGenerateCommandOutputFile(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	// Might fail due to cache, but command should parse correctly
 	if err == nil {
@@ -166,9 +194,18 @@ func TestGenerateCommandAppendMode(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
+	}()
 	
 	// Create existing .gitignore file
 	gitignorePath := filepath.Join(testDir, ".gitignore")
@@ -186,7 +223,7 @@ func TestGenerateCommandAppendMode(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	if err == nil {
 		// Verify file was appended to
@@ -207,9 +244,18 @@ func TestGenerateCommandForceOverwrite(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
+	}()
 	
 	// Create existing .gitignore file
 	gitignorePath := filepath.Join(testDir, ".gitignore")
@@ -227,7 +273,7 @@ func TestGenerateCommandForceOverwrite(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	if err == nil {
 		// Verify file was overwritten (old content should be gone)
@@ -248,9 +294,18 @@ func TestGenerateCommandNoHeader(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
+	}()
 	
 	opts := &Options{}
 	cmd := newGenerateCommand(opts)
@@ -262,7 +317,7 @@ func TestGenerateCommandNoHeader(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	if err == nil {
 		// Verify header was not included
@@ -284,9 +339,18 @@ func TestGenerateCommandTemplateNotFound(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
+	}()
 	
 	opts := &Options{}
 	cmd := newGenerateCommand(opts)
@@ -298,7 +362,7 @@ func TestGenerateCommandTemplateNotFound(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	// Should error because template doesn't exist
 	if err == nil {
@@ -316,9 +380,18 @@ func TestGenerateCommandFileExists(t *testing.T) {
 	defer cleanup()
 	
 	testDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	os.Chdir(testDir)
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Logf("failed to restore working directory: %v", err)
+		}
+	}()
 	
 	// Create existing .gitignore file
 	gitignorePath := filepath.Join(testDir, ".gitignore")
@@ -336,7 +409,7 @@ func TestGenerateCommandFileExists(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	
-	err := cmd.Execute()
+	err = cmd.Execute()
 	
 	// Should error because file exists and we're in non-interactive mode
 	if err == nil {

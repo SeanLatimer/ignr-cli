@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: ['*']
+    branches: ["*"]
   pull_request:
-    branches: ['*']
+    branches: ["*"]
 
 jobs:
   test:
@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ['1.25.4']
+        go-version: ["1.25.4"]
 
     steps:
       - name: Checkout code
@@ -26,7 +26,9 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Run unit tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: |
+          mkdir -p dist
+          go test -v -race -coverprofile=dist/coverage.out -covermode=atomic ./...
 
       - name: Run integration tests
         run: go test -tags=integration -v ./... || true
@@ -37,17 +39,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         with:
           name: coverage-report
-          path: coverage.out
+          path: dist/coverage.out
           retention-days: 30
 
       - name: Generate coverage HTML
         if: matrix.os == 'ubuntu-latest'
-        run: go tool cover -html=coverage.out -o coverage.html
+        run: go tool cover -html=dist/coverage.out -o dist/coverage.html
 
       - name: Upload coverage HTML
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: coverage.html
+          path: dist/coverage.html
           retention-days: 30

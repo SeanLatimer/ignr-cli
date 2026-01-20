@@ -22,22 +22,34 @@ func setupCacheTest(t *testing.T) func() {
 	
 	// Set environment variables based on OS
 	if runtime.GOOS == "windows" {
-		os.Setenv("APPDATA", tmpDir)
+		if err := os.Setenv("APPDATA", tmpDir); err != nil {
+			t.Fatalf("failed to set APPDATA: %v", err)
+		}
 	} else {
-		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+		if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
+			t.Fatalf("failed to set XDG_CONFIG_HOME: %v", err)
+		}
 	}
 	
 	// Return cleanup function
 	return func() {
 		if originalXDGConfig != "" {
-			os.Setenv("XDG_CONFIG_HOME", originalXDGConfig)
+			if err := os.Setenv("XDG_CONFIG_HOME", originalXDGConfig); err != nil {
+				t.Logf("failed to restore XDG_CONFIG_HOME: %v", err)
+			}
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			if err := os.Unsetenv("XDG_CONFIG_HOME"); err != nil {
+				t.Logf("failed to unset XDG_CONFIG_HOME: %v", err)
+			}
 		}
 		if originalAppData != "" {
-			os.Setenv("APPDATA", originalAppData)
+			if err := os.Setenv("APPDATA", originalAppData); err != nil {
+				t.Logf("failed to restore APPDATA: %v", err)
+			}
 		} else {
-			os.Unsetenv("APPDATA")
+			if err := os.Unsetenv("APPDATA"); err != nil {
+				t.Logf("failed to unset APPDATA: %v", err)
+			}
 		}
 	}
 }
@@ -118,7 +130,9 @@ func TestIsCacheInitialized(t *testing.T) {
 				gitDir := filepath.Join(path, ".git")
 				if _, err := os.Stat(gitDir); err == nil {
 					// .git exists, remove it for this test
-					os.RemoveAll(gitDir)
+					if err := os.RemoveAll(gitDir); err != nil {
+						t.Logf("failed to remove .git dir: %v", err)
+					}
 				}
 				return path
 			},

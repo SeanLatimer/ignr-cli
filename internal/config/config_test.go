@@ -98,6 +98,10 @@ func TestGetUserTemplatePath(t *testing.T) {
 	cleanup := setupConfigTest(t)
 	defer cleanup()
 	
+	// Get temp dir for custom path test
+	tmpDir := t.TempDir()
+	customPath := filepath.Join(tmpDir, "custom", "templates")
+	
 	tests := []struct {
 		name          string
 		configData    Config
@@ -115,10 +119,10 @@ func TestGetUserTemplatePath(t *testing.T) {
 		{
 			name: "custom path",
 			configData: Config{
-				UserTemplatePath: "/custom/templates",
+				UserTemplatePath: customPath,
 			},
 			wantPath: func(path string) bool {
-				return path == "/custom/templates"
+				return path == customPath
 			},
 			wantErr: false,
 		},

@@ -1,3 +1,4 @@
+// Package presets provides preset detection from project files.
 package presets
 
 import (
@@ -66,11 +67,12 @@ func ruleMatches(rule DetectionRule, detected []string) bool {
 	for _, pattern := range rule.Patterns {
 		pattern = strings.ToLower(pattern)
 		for _, candidate := range detected {
-			match, err := filepath.Match(pattern, candidate)
+			candidateLower := strings.ToLower(candidate)
+			match, err := filepath.Match(pattern, candidateLower)
 			if err == nil && match {
 				return true
 			}
-			if pattern == candidate {
+			if pattern == candidateLower {
 				return true
 			}
 		}

@@ -1,3 +1,4 @@
+// Package cache provides cache initialization and management for gitignore templates.
 package cache
 
 import (

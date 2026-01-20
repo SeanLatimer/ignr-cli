@@ -1,3 +1,4 @@
+// Package templates provides template merging and deduplication for gitignore files.
 package templates
 
 import (

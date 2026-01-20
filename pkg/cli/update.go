@@ -20,10 +20,10 @@ func newUpdateCommand(opts *Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Updated cache at %s\n", cachePath)
-			if status.HeadCommit != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "HEAD %s\n", status.HeadCommit)
-			}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated cache at %s\n", cachePath)
+		if status.HeadCommit != "" {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "HEAD %s\n", status.HeadCommit)
+		}
 			return nil
 		},
 	}

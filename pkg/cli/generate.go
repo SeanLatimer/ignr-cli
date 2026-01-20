@@ -104,7 +104,7 @@ func newGenerateCommand(opts *Options) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Generated %s with %d templates\n", target, len(selected))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Generated %s with %d templates\n", target, len(selected))
 			return nil
 		},
 	}
@@ -192,10 +192,13 @@ func appendToFile(path, content string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	if _, err := file.WriteString(content); err != nil {
-		return err
+	_, writeErr := file.WriteString(content)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	if closeErr != nil {
+		return closeErr
 	}
 	return nil
 }

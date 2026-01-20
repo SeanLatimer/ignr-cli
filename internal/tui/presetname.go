@@ -80,15 +80,6 @@ func (m presetNameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func isTextInputNavKey(key string) bool {
-	switch key {
-	case "backspace", "delete", "left", "right", "home", "end":
-		return true
-	default:
-		return false
-	}
-}
-
 func (m presetNameModel) View() tea.View {
 	value := strings.TrimSpace(m.input.Value())
 	keyPreview := presets.SluggifyName(value)

@@ -31,7 +31,7 @@ func newListCommand(opts *Options) *cobra.Command {
 				if categoryFilter != "" && strings.ToLower(string(item.Category)) != categoryFilter {
 					continue
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", item.Category, item.Name)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", item.Category, item.Name)
 			}
 			return nil
 		},

@@ -83,7 +83,7 @@ func newPresetCreateCommand(opts *Options) *cobra.Command {
 				if err := presets.CreatePreset(name, templateNames); err != nil {
 					return err
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Created preset %s with %d templates\n", name, len(templateNames))
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created preset %s with %d templates\n", name, len(templateNames))
 				return nil
 			}
 
@@ -126,7 +126,7 @@ func newPresetCreateCommand(opts *Options) *cobra.Command {
 			if err := presets.CreatePreset(name, templateNames); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Created preset %s with %d templates\n", name, len(templateNames))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created preset %s with %d templates\n", name, len(templateNames))
 			return nil
 		},
 	}
@@ -144,7 +144,7 @@ func newPresetListCommand(opts *Options) *cobra.Command {
 				return err
 			}
 			if len(list) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No presets found.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No presets found.")
 				return nil
 			}
 			for _, preset := range list {
@@ -152,7 +152,7 @@ func newPresetListCommand(opts *Options) *cobra.Command {
 				if strings.TrimSpace(key) == "" {
 					key = presets.SluggifyName(preset.Name)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s [%s] (%d templates)\n", preset.Name, key, len(preset.Templates))
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s [%s] (%d templates)\n", preset.Name, key, len(preset.Templates))
 			}
 			return nil
 		},
@@ -192,7 +192,7 @@ func newPresetEditCommand(opts *Options) *cobra.Command {
 				if err := presets.EditPreset(name, templateNames); err != nil {
 					return err
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Updated preset %s with %d templates\n", name, len(templateNames))
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated preset %s with %d templates\n", name, len(templateNames))
 				return nil
 			}
 
@@ -246,7 +246,7 @@ func newPresetEditCommand(opts *Options) *cobra.Command {
 			if err := presets.EditPreset(presetKey, templateNames); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Updated preset %s with %d templates\n", preset.Name, len(templateNames))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated preset %s with %d templates\n", preset.Name, len(templateNames))
 			return nil
 		},
 	}
@@ -269,16 +269,16 @@ func newPresetShowCommand(opts *Options) *cobra.Command {
 				return fmt.Errorf("preset not found: %s", name)
 			}
 			if strings.TrimSpace(preset.Key) != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Key: %s\n", preset.Key)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", preset.Name)
-			fmt.Fprintf(cmd.OutOrStdout(), "Templates: %s\n", strings.Join(preset.Templates, ", "))
-			if preset.Created != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Created: %s\n", preset.Created)
-			}
-			if preset.Updated != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Updated: %s\n", preset.Updated)
-			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Key: %s\n", preset.Key)
+		}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", preset.Name)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Templates: %s\n", strings.Join(preset.Templates, ", "))
+		if preset.Created != "" {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created: %s\n", preset.Created)
+		}
+		if preset.Updated != "" {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated: %s\n", preset.Updated)
+		}
 			return nil
 		},
 	}
@@ -321,7 +321,7 @@ func newPresetDeleteCommand(opts *Options) *cobra.Command {
 				return err
 			}
 			if !confirm {
-				fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
 				return nil
 			}
 
@@ -332,7 +332,7 @@ func newPresetDeleteCommand(opts *Options) *cobra.Command {
 			if err := presets.DeletePreset(key); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Deleted preset %s\n", preset.Name)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Deleted preset %s\n", preset.Name)
 			return nil
 		},
 	}
@@ -416,7 +416,7 @@ func newPresetUseCommand(opts *Options) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Generated %s with %d templates\n", target, len(selected))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Generated %s with %d templates\n", target, len(selected))
 			return nil
 		},
 	}
@@ -479,7 +479,7 @@ func presetKeyExists(keys []string, key string) bool {
 
 func confirmPrompt(cmd *cobra.Command, prompt string) (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s [y/N]: ", prompt)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s [y/N]: ", prompt)
 	line, err := reader.ReadString('\n')
 	if err != nil {
 		return false, err

@@ -1,0 +1,16 @@
+presets:
+  - key: my-project
+    name: My Project
+    templates:
+      - Go
+      - Python
+      - Node
+    created: "2024-01-01T00:00:00Z"
+    updated: "2024-01-01T00:00:00Z"
+  - key: web-dev
+    name: Web Development
+    templates:
+      - Node
+      - Python
+    created: "2024-01-02T00:00:00Z"
+    updated: "2024-01-02T00:00:00Z"

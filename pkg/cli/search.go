@@ -35,7 +35,7 @@ func newSearchCommand(opts *Options) *cobra.Command {
 			matches := fuzzy.FindFrom(pattern, stringSource(names))
 			for _, match := range matches {
 				item := items[match.Index]
-				fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", item.Category, item.Name)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", item.Category, item.Name)
 			}
 			return nil
 		},

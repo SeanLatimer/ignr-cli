@@ -177,9 +177,3 @@ func popView() tea.Cmd {
 		return popViewMsg{}
 	}
 }
-
-func quitApp() tea.Cmd {
-	return func() tea.Msg {
-		return quitAppMsg{}
-	}
-}

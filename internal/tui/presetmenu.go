@@ -34,8 +34,7 @@ func ShowPresetMenu() (string, error) {
 	l.SetSize(60, len(items)+2)
 	l.Title = "Preset Management"
 	l.SetShowTitle(true)
-	// Styles will be initialized when background color is detected
-	// Note: This will be updated in Update() when BackgroundColorMsg arrives
+	// Styles will be initialized when BackgroundColorMsg arrives in Update()
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowPagination(false)
@@ -120,5 +119,5 @@ func (d presetMenuDelegate) Render(w io.Writer, m list.Model, index int, item li
 	if index == m.Index() {
 		line = getStyles().SelectedStyle.Render(line)
 	}
-	fmt.Fprint(w, line)
+	_, _ = fmt.Fprint(w, line)
 }

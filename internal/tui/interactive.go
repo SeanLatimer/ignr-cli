@@ -393,19 +393,6 @@ func removeSelected(items []templates.Template, path string) []templates.Templat
 	return items
 }
 
-func clampCursor(cursor, length int) int {
-	if length == 0 {
-		return 0
-	}
-	if cursor >= length {
-		return length - 1
-	}
-	if cursor < 0 {
-		return 0
-	}
-	return cursor
-}
-
 type templateListItem struct {
 	template templates.Template
 	selected bool
@@ -442,7 +429,7 @@ func (d templateListDelegate) Render(w io.Writer, m list.Model, index int, listI
 	if index == m.Index() {
 		line = getStyles().SelectedStyle.Render(line)
 	}
-	fmt.Fprint(w, line)
+	_, _ = fmt.Fprint(w, line)
 }
 
 func templateListItems(items []templates.Template, selected map[string]templates.Template, suggested map[string]bool) []list.Item {
@@ -491,15 +478,4 @@ func templateListItemsWithPresets(items []templates.Template, selected map[strin
 		})
 	}
 	return results
-}
-
-func joinBlocks(blocks ...string) string {
-	parts := make([]string, 0, len(blocks))
-	for _, block := range blocks {
-		if block == "" {
-			continue
-		}
-		parts = append(parts, block)
-	}
-	return strings.Join(parts, "\n")
 }

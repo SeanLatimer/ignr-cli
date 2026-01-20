@@ -1,0 +1,23 @@
+# .ruby-version
+# .ruby-gemset
+
+# Used by RVM
+.rvmrc
+
+# Used by Bundler
+Gemfile.lock
+
+# Used by Capistrano
+.capybara
+
+# Rack
+.rack
+
+# IntelliJ IDEA / RubyMine
+.idea/
+
+# Byebug
+.byebug_history
+
+# Coverage reports
+/coverage/

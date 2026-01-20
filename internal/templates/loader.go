@@ -1,3 +1,4 @@
+// Package templates provides template loading functionality for gitignore files.
 package templates
 
 import (

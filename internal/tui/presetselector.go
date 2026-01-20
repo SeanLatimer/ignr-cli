@@ -245,7 +245,7 @@ func (d presetSelectorDelegate) Render(w io.Writer, m list.Model, index int, lis
 	if index == m.Index() {
 		line = getStyles().SelectedStyle.Render(line)
 	}
-	fmt.Fprint(w, line)
+	_, _ = fmt.Fprint(w, line)
 }
 
 func presetItems(items []presets.Preset) []list.Item {
